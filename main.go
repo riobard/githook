@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -32,24 +33,34 @@ func main() {
 	flag.BoolVar(&arg.version, "version", false, "print version number")
 	flag.Parse()
 
-	f, err := os.Open(arg.conf)
-	if err != nil {
-		log.Fatalf("failed to open config file %s: %s", arg.conf, err)
-	}
-
-	if err := json.NewDecoder(f).Decode(&conf); err != nil {
-		log.Fatalf("failed to parse config file %s: %s", arg.conf, err)
-	}
-
 	if arg.version {
 		println(Version)
 		return
 	}
 
+	f, err := os.Open(arg.conf)
+	if err != nil {
+		log.Fatalf("failed to open config file %s: %s", arg.conf, err)
+	}
+
+	conf, err = parseConf(f)
+	if err != nil {
+		log.Fatalf("failed to parse config file %s: %s", arg.conf, err)
+	}
+
 	log.Printf("Listening on %s", arg.addr)
 	if err := http.ListenAndServe(arg.addr, http.HandlerFunc(handle)); err != nil {
-		log.Fatal(err)
+		log.Fatalf("http.ListenAndServe error: %s", err)
 	}
+}
+
+func parseConf(r io.Reader) (map[string]*Hook, error) {
+	conf := make(map[string]*Hook)
+	if err := json.NewDecoder(r).Decode(&conf); err != nil {
+		return nil, err
+	}
+	return conf, nil
+
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
