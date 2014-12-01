@@ -17,6 +17,7 @@ var conf map[string]*Hook
 
 var arg struct {
 	version bool
+	verbose bool
 	conf    string
 	addr    string
 }
@@ -31,6 +32,7 @@ func main() {
 	flag.StringVar(&arg.addr, "addr", ":4008", "listening address")
 	flag.StringVar(&arg.conf, "conf", "/etc/githook.conf", "path to config file")
 	flag.BoolVar(&arg.version, "version", false, "print version number")
+	flag.BoolVar(&arg.verbose, "verbose", false, "verbose mode")
 	flag.Parse()
 
 	if arg.version {
@@ -72,8 +74,15 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	switch src := strings.ToLower(hook.Source); src {
 	case "github":
+		logf("received github event")
 		github.NewHook(hook.Secret, hook.Command).ServeHTTP(w, r)
 	default:
 		http.Error(w, "unexpected source", http.StatusBadRequest)
+	}
+}
+
+func logf(f string, args ...interface{}) {
+	if arg.verbose {
+		log.Printf(f, args...)
 	}
 }
